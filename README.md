@@ -1,0 +1,1 @@
+A full-stack web application built with React (frontend) and FastAPI (backend) that allows users to register, log in, and manage books (create, update, delete, and view books). Users can upload images of books, view them in an eCommerce-like interface, and add them to a shopping cart.
