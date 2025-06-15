@@ -66,12 +66,13 @@ def create_book(
     title: str = Form(...),
     author: str = Form(...),
     price: float = Form(...),
+    description: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
     image_data = image.file.read()
-    db_book = models.Book(title=title, author=author, price=price, image_data=image_data)
+    db_book = models.Book(title=title, author=author, price=price,  description = description, image_data=image_data)
     db.add(db_book)
     db.commit()
     db.refresh(db_book)

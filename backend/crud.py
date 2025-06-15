@@ -39,7 +39,9 @@ def create_book(db: Session, book: schemas.BookCreate):
     db_book = models.Book(
         id=uuid.uuid4(),
         title=book.title,
-        author=book.author
+        author=book.author,
+        price=book.price,
+        description=book.description,
     )
     db.add(db_book)
     db.commit()

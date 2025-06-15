@@ -21,12 +21,13 @@ import {
 import { Link } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import { useCart } from "./CartContext"; // ✅ FIXED
 
 const API = "http://localhost:8000";
 
 const BookList = () => {
   const [books, setBooks] = useState([]);
-  const [cart, setCart] = useState([]);
+  const { cart, addToCart } = useCart();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -40,9 +41,9 @@ const BookList = () => {
     setDrawerOpen(!drawerOpen);
   };
 
-  const addToCart = (book) => {
-    setCart((prevCart) => [...prevCart, book]);
-  };
+  // const addToCart = (book) => {
+  //   setCart((prevCart) => [...prevCart, book]);
+  // };
 
   return (
     <>
@@ -78,8 +79,10 @@ const BookList = () => {
             <ListItem button component={Link} to="/books">
               <ListItemText primary="Storefront" />
             </ListItem>
-            <ListItem>
-              <ListItemText primary={`Cart Items: ${cart.length}`} />
+            <ListItem button component={Link} to="/cart">
+              {" "}
+              {/* ✅ Add this line */}
+              <ListItemText primary={`View Cart (${cart.length})`} />
             </ListItem>
           </List>
         </Box>
@@ -92,9 +95,10 @@ const BookList = () => {
             <Grid item xs={12} sm={6} md={4} key={book.id}>
               <Card
                 sx={{
-                  height: "100%",
+                  height: 400, // fixed height
                   display: "flex",
                   flexDirection: "column",
+                  justifyContent: "space-between",
                 }}
               >
                 <CardMedia
@@ -104,8 +108,10 @@ const BookList = () => {
                   alt={book.title}
                 />
                 <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6">{book.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="h6" gutterBottom noWrap>
+                    {book.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap>
                     {book.author}
                   </Typography>
                   <Typography variant="h6" color="primary">

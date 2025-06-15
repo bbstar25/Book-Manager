@@ -8,7 +8,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Paper,
   Box,
@@ -27,6 +26,7 @@ const BookManager = () => {
   const [author, setAuthor] = useState("");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState(null);
+  const [description, setDescription] = useState("");
   const [editId, setEditId] = useState(null);
 
   const [username, setUsername] = useState("");
@@ -60,8 +60,8 @@ const BookManager = () => {
       setUsername("");
       setPassword("");
     } catch (err) {
-      alert("Login failed. Check your credentials.");
       console.error("Login error:", err);
+      alert("Login failed. Check your credentials.");
     }
   };
 
@@ -88,7 +88,6 @@ const BookManager = () => {
         "Registration failed: " +
           (err.response?.data?.detail || "Please try again.")
       );
-      console.error("Registration error:", err);
     }
   };
 
@@ -99,42 +98,36 @@ const BookManager = () => {
     setTitle("");
     setAuthor("");
     setPrice("");
+    setDescription("");
     setImage(null);
     setEditId(null);
   };
 
   const saveBook = async () => {
-    if (!title || !author || !price) {
-      alert("Title, author, and price are required.");
+    if (!title || !author || !price || !description) {
+      alert("All fields including description are required.");
       return;
     }
 
-    const form = new FormData();
-    form.append("title", title);
-    form.append("author", author);
-    form.append("price", price);
-    if (image) form.append("image", image);
-
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
+    const headers = { Authorization: `Bearer ${token}` };
 
     try {
       let res;
       if (editId) {
-        // Updating book (image won't update here)
         res = await axios.put(
           `${API}/books/${editId}`,
-          {
-            title,
-            author,
-            price,
-          },
+          { title, author, price, description },
           { headers }
         );
         setBooks(books.map((b) => (b.id === editId ? res.data : b)));
       } else {
-        // Creating new book
+        const form = new FormData();
+        form.append("title", title);
+        form.append("author", author);
+        form.append("price", price);
+        form.append("description", description);
+        if (image) form.append("image", image);
+
         res = await axios.post(`${API}/books`, form, {
           headers: {
             ...headers,
@@ -144,10 +137,10 @@ const BookManager = () => {
         setBooks([...books, res.data]);
       }
 
-      // Reset form
       setTitle("");
       setAuthor("");
       setPrice("");
+      setDescription("");
       setImage(null);
       setEditId(null);
     } catch (err) {
@@ -182,75 +175,71 @@ const BookManager = () => {
 
           {activeTab === "login" ? (
             <>
-              <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="h5" sx={{ mt: 2 }}>
                 Login
               </Typography>
               <TextField
                 fullWidth
-                margin="normal"
                 label="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
               <TextField
                 fullWidth
-                margin="normal"
                 label="Password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                sx={{ mt: 2 }}
               />
               <Button
-                variant="contained"
-                color="primary"
                 fullWidth
-                onClick={login}
                 sx={{ mt: 2 }}
+                onClick={login}
+                variant="contained"
               >
                 Login
               </Button>
             </>
           ) : (
             <>
-              <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="h5" sx={{ mt: 2 }}>
                 Register
               </Typography>
               <TextField
                 fullWidth
-                margin="normal"
                 label="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
               <TextField
                 fullWidth
-                margin="normal"
                 label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                sx={{ mt: 2 }}
               />
               <TextField
                 fullWidth
-                margin="normal"
                 label="Password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                sx={{ mt: 2 }}
               />
               <TextField
                 fullWidth
-                margin="normal"
                 label="Confirm Password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                sx={{ mt: 2 }}
               />
               <Button
-                variant="contained"
-                color="primary"
                 fullWidth
-                onClick={register}
                 sx={{ mt: 2 }}
+                onClick={register}
+                variant="contained"
               >
                 Register
               </Button>
@@ -265,12 +254,7 @@ const BookManager = () => {
             alignItems="center"
             mb={2}
           >
-            <Button
-              component={Link}
-              to="/books"
-              variant="outlined"
-              sx={{ mr: 2 }}
-            >
+            <Button component={Link} to="/books" variant="outlined">
               View Store
             </Button>
             <Typography variant="h4">Book Manager</Typography>
@@ -282,25 +266,34 @@ const BookManager = () => {
           <Paper sx={{ p: 2, mb: 2 }}>
             <TextField
               fullWidth
-              margin="normal"
               label="Title"
+              margin="normal"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
             <TextField
               fullWidth
-              margin="normal"
               label="Author"
+              margin="normal"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
             />
             <TextField
               fullWidth
-              margin="normal"
               label="Price"
               type="number"
+              margin="normal"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              margin="normal"
+              multiline
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
             <Button
               variant="contained"
@@ -318,10 +311,9 @@ const BookManager = () => {
             </Button>
             <Button
               variant="contained"
-              color="primary"
-              onClick={saveBook}
               fullWidth
               sx={{ mt: 2 }}
+              onClick={saveBook}
             >
               {editId ? "Update Book" : "Add Book"}
             </Button>
@@ -329,32 +321,46 @@ const BookManager = () => {
 
           <List>
             {books.map((book) => (
-              <ListItem key={book.id} divider>
-                <ListItemText
-                  primary={`${book.title} by ${book.author}`}
-                  secondary={`₦${book.price}`}
-                />
-                <img
-                  src={`${API}/books/${book.id}/image`}
-                  alt="Book"
-                  style={{ width: 60, height: "auto", marginRight: 10 }}
-                />
-                <ListItemSecondaryAction>
-                  <IconButton
-                    edge="end"
-                    onClick={() => {
-                      setTitle(book.title);
-                      setAuthor(book.author);
-                      setPrice(book.price);
-                      setEditId(book.id);
-                    }}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton edge="end" onClick={() => deleteBook(book.id)}>
-                    <Delete />
-                  </IconButton>
-                </ListItemSecondaryAction>
+              <ListItem key={book.id} divider alignItems="flex-start">
+                <Box sx={{ display: "flex", width: "100%" }}>
+                  <img
+                    src={`${API}/books/${book.id}/image`}
+                    alt="Book"
+                    style={{ width: 60, height: "auto", marginRight: 10 }}
+                  />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <ListItemText
+                      primary={`${book.title} by ${book.author}`}
+                      secondary={
+                        <>
+                          <Typography variant="body2">₦{book.price}</Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ whiteSpace: "pre-line" }}
+                          >
+                            {book.description}
+                          </Typography>
+                        </>
+                      }
+                    />
+                  </Box>
+                  <Box>
+                    <IconButton
+                      onClick={() => {
+                        setTitle(book.title);
+                        setAuthor(book.author);
+                        setPrice(book.price);
+                        setDescription(book.description);
+                        setEditId(book.id);
+                      }}
+                    >
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => deleteBook(book.id)}>
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                </Box>
               </ListItem>
             ))}
           </List>

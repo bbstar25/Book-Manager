@@ -12,6 +12,7 @@ class Book(Base):
     title = Column(String, index=True)
     author = Column(String, index=True)
     price = Column(Float)
+    description = Column(String, index=True)
     image_data = Column(LargeBinary)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
