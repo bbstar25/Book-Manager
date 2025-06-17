@@ -2,21 +2,25 @@ from pydantic import BaseModel, EmailStr
 from uuid import UUID
 from typing import Optional
 
+
 # ======== BOOK SCHEMAS =========
 class BookBase(BaseModel):
     title: str
     author: str
     price: float
-    description: str | None = None
+    description: Optional[str] = ""
 
 class BookCreate(BookBase):
-    pass
+    class Config:
+        orm_mode = True
 
 class Book(BookBase):
     id: UUID
+    has_pdf: bool = False  # ✅ Indicates if PDF is uploaded for this book
 
     class Config:
         orm_mode = True
+
 
 # ======== TOKEN SCHEMAS =========
 class Token(BaseModel):
@@ -26,6 +30,10 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+    class Config:
+        orm_mode = True
+
+
 # ======== USER SCHEMAS =========
 class UserBase(BaseModel):
     username: str
@@ -33,11 +41,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    role: Optional[str] = "user"
 
 class UserOut(UserBase):
-    id: UUID  # Include this to make /users/me and /register response more useful
+    id: UUID
+    role: str
 
     class Config:
         orm_mode = True
-
-
