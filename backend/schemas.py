@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 
 # ======== BOOK SCHEMAS =========
@@ -46,6 +47,29 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: UUID
     role: str
+
+    class Config:
+        orm_mode = True
+
+
+class OrderItemCreate(BaseModel):
+    book_id: UUID
+    title: str
+    price: float
+    quantity: int
+
+class OrderCreate(BaseModel):
+    items: List[OrderItemCreate]
+
+class OrderItemOut(OrderItemCreate):
+    class Config:
+        orm_mode = True
+
+class OrderOut(BaseModel):
+    id: UUID
+    status: str
+    created_at: datetime
+    items: List[OrderItemOut]
 
     class Config:
         orm_mode = True

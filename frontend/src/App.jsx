@@ -1,8 +1,10 @@
 import BookManager from "./BookManager";
 import BookList from "./BookList";
-import { Routes, Route } from "react-router-dom";
 import CartPage from "./CartPage";
 import CheckoutPage from "./CheckoutPage";
+import Orders from "./Orders"; // ✅ import orders page
+import OrderTracker from "./OrderTracker"; // ✅ import order tracker page
+import { Routes, Route } from "react-router-dom";
 
 const App = () => {
   return (
@@ -16,6 +18,10 @@ const App = () => {
         <Route path="/books/:id/view" element={<BookList />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
+
+        <Route path="/orders" element={<Orders />} />
+        <Route path="/track" element={<OrderTracker />} />
+
         <Route path="*" element={<BookList />} />
       </Routes>
     </>

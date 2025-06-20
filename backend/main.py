@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 import models, schemas, auth, crud
 from database import SessionLocal, engine
@@ -168,3 +169,45 @@ def make_admin(
     user.role = "admin"
     db.commit()
     return {"message": f"{username} is now an admin."}
+
+
+@app.post("/orders", response_model=schemas.OrderOut)
+def create_order(
+    order: schemas.OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    new_order = models.Order(user_id=current_user.id)
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+
+    for item in order.items:
+        order_item = models.OrderItem(
+            order_id=new_order.id,
+            book_id=item.book_id,
+            title=item.title,
+            price=item.price,
+            quantity=item.quantity
+        )
+        db.add(order_item)
+
+    db.commit()
+    db.refresh(new_order)
+    return new_order
+
+
+@app.get("/orders", response_model=List[schemas.OrderOut])
+def get_my_orders(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    orders = db.query(models.Order).filter(models.Order.user_id == current_user.id).all()
+    return orders
+
+@app.get("/orders/{order_id}", response_model=schemas.OrderOut)
+def get_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order

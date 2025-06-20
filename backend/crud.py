@@ -54,3 +54,33 @@ def update_book(db: Session, db_book: models.Book, book_data: schemas.BookCreate
 def delete_book(db: Session, db_book: models.Book):
     db.delete(db_book)
     db.commit()
+
+
+# ------------------------
+# ORDER LOGIC
+# ------------------------
+
+def create_order(db: Session, user_id: str, order_data: schemas.OrderCreate):
+    order = models.Order(user_id=user_id)
+    db.add(order)
+    db.flush()  # Get the order.id before committing
+
+    for item in order_data.items:
+        db_item = models.OrderItem(
+            order_id=order.id,
+            book_id=item.book_id,
+            title=item.title,
+            price=item.price,
+            quantity=item.quantity,
+        )
+        db.add(db_item)
+
+    db.commit()
+    db.refresh(order)
+    return order
+
+def get_user_orders(db: Session, user_id: str):
+    return db.query(models.Order).filter(models.Order.user_id == user_id).all()
+
+def get_order_by_id(db: Session, order_id: str):
+    return db.query(models.Order).filter(models.Order.id == order_id).first()

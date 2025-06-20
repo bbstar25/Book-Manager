@@ -1,4 +1,3 @@
-// CheckoutPage.jsx
 import React, { useState } from "react";
 import { useCart } from "./CartContext";
 import {
@@ -12,9 +11,13 @@ import {
   Box,
   Divider,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+
+const API = "http://localhost:8000";
 
 const CheckoutPage = () => {
-  const { cart } = useCart();
+  const { cart, clearCart } = useCart();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -25,15 +28,49 @@ const CheckoutPage = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.email || !form.address) {
       alert("Please fill all fields.");
       return;
     }
 
-    // TODO: Send to backend if needed
-    console.log("Order placed!", { form, cart });
-    alert("✅ Order placed successfully!");
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to place an order.");
+      return;
+    }
+
+    const orderData = {
+      items: cart.map((item) => ({
+        book_id: item.id,
+        title: item.title,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    };
+
+    try {
+      const res = await fetch(`${API}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to place order");
+      }
+
+      const data = await res.json();
+      alert("✅ Order placed successfully!");
+      clearCart();
+      navigate(`/track?id=${data.id}`);
+    } catch (err) {
+      console.error("Order failed:", err);
+      alert("❌ Failed to place order. Try again.");
+    }
   };
 
   const totalPrice = cart.reduce(

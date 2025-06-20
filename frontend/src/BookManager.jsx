@@ -38,6 +38,7 @@ const Sidebar = ({ onLogout }) => {
       <Typography variant="h6" sx={{ mb: 4 }}>
         Admin Menu
       </Typography>
+
       <Button
         fullWidth
         variant="outlined"
@@ -46,6 +47,16 @@ const Sidebar = ({ onLogout }) => {
       >
         View Store
       </Button>
+
+      <Button
+        fullWidth
+        variant="outlined"
+        sx={{ mb: 2 }}
+        onClick={() => navigate("/orders")}
+      >
+        View Orders
+      </Button>
+
       <Button
         fullWidth
         variant="contained"
@@ -183,7 +194,7 @@ const BookManager = () => {
         form.append("price", price);
         form.append("description", description);
         if (image) form.append("image", image);
-        if (pdf) form.append("pdf_file", pdf);
+        if (pdf) form.append("pdf", pdf);
 
         res = await axios.post(`${API}/books`, form, {
           headers: {
