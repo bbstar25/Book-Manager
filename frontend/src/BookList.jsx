@@ -66,15 +66,17 @@ const BookList = () => {
   const handleRatingChange = async (bookId, newValue) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
+      const response = await axios.post(
         `${API}/ratings`,
-        { book_id: bookId, score: newValue },
+        { book_id: bookId, score: Math.round(newValue) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Optionally update book ratings after submission
+
+      const { average_rating, rating_count } = response.data;
+
       setBooks((prevBooks) =>
         prevBooks.map((book) =>
-          book.id === bookId ? { ...book, average_rating: newValue } : book
+          book.id === bookId ? { ...book, average_rating, rating_count } : book
         )
       );
     } catch (err) {
@@ -82,6 +84,7 @@ const BookList = () => {
       alert("Login required to rate books.");
     }
   };
+
   return (
     <>
       {/* Navbar */}
@@ -245,6 +248,9 @@ const BookList = () => {
                       handleRatingChange(book.id, newValue)
                     }
                   />
+                  <Typography variant="caption" color="textSecondary">
+                    ({book.rating_count || 0} ratings)
+                  </Typography>
                 </CardContent>
 
                 <Button

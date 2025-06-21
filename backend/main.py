@@ -212,18 +212,48 @@ def get_order(order_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
-
 @app.post("/ratings", response_model=schemas.RatingOut)
 def create_rating(
     rating: schemas.RatingCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    existing = db.query(models.Rating).filter_by(user_id=current_user.id, book_id=rating.book_id).first()
+    book = db.query(models.Book).filter_by(id=rating.book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    existing = db.query(models.Rating).filter_by(
+        user_id=current_user.id, book_id=rating.book_id
+    ).first()
+
     if existing:
         existing.score = rating.score
     else:
-        new_rating = models.Rating(user_id=current_user.id, book_id=rating.book_id, score=rating.score)
-        db.add(new_rating)
+        existing = models.Rating(
+            user_id=current_user.id,
+            book_id=rating.book_id,
+            score=rating.score
+        )
+        db.add(existing)
+
     db.commit()
-    return existing or new_rating
+    db.refresh(existing)
+
+    # ✅ Recalculate average and count
+    ratings = db.query(models.Rating).filter_by(book_id=rating.book_id).all()
+    scores = [r.score for r in ratings]
+    average = sum(scores) / len(scores)
+
+    book.average_rating = average
+    book.rating_count = len(scores)
+    db.commit()
+
+    return {
+        "id": existing.id,
+        "book_id": existing.book_id,
+        "user_id": existing.user_id,
+        "score": existing.score,
+        "average_rating": average,
+        "rating_count": len(scores)
+    }
+

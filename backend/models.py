@@ -15,15 +15,20 @@ class Book(Base):
     price = Column(Float, nullable=False)
     description = Column(String, nullable=False)
     image_data = Column(LargeBinary)
-    pdf_data = Column(LargeBinary , nullable=True)  # ✅ Added for PDF file
+    pdf_data = Column(LargeBinary , nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
+    # ✅ Add these two new columns
+    average_rating = Column(Float, default=0.0)
+    rating_count = Column(Integer, default=0)
+
     ratings = relationship("Rating", back_populates="book", cascade="all, delete")
     order_items = relationship("OrderItem", back_populates="book", cascade="all, delete")
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -63,7 +68,7 @@ class OrderItem(Base):
     book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"))
     title = Column(String)
     price = Column(Float)
-    quantity = Column(Integer)
+    quantity = Column(Float)
     
     book = relationship("Book", back_populates="order_items")
     order = relationship("Order", back_populates="items")
@@ -72,7 +77,7 @@ class OrderItem(Base):
 class Rating(Base):
     __tablename__ = "ratings"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=UUID, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"))
     score = Column(Integer)  # Rating from 1 to 5

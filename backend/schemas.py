@@ -20,7 +20,7 @@ class Book(BookBase):
    
     has_pdf: bool = False  # ✅ Indicates if PDF is uploaded for this book
     average_rating: float = 0.0
-
+    rating_count: int = 0
     class Config:
         orm_mode = True
 
@@ -80,13 +80,14 @@ class OrderOut(BaseModel):
         
 class RatingCreate(BaseModel):
     book_id: UUID
-    score: int = Field(ge=1, le=5)
+    score: float = Field(ge=1, le=5)
 
 class RatingOut(BaseModel):
     id: UUID
     book_id: UUID
     user_id: UUID
-    score: int
-
+    score: float  # ✅ must be float
+    average_rating: float
+    rating_count: int
     class Config:
         from_attributes = True
