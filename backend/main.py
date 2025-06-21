@@ -211,3 +211,19 @@ def get_order(order_id: str, db: Session = Depends(get_db)):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+
+@app.post("/ratings", response_model=schemas.RatingOut)
+def create_rating(
+    rating: schemas.RatingCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    existing = db.query(models.Rating).filter_by(user_id=current_user.id, book_id=rating.book_id).first()
+    if existing:
+        existing.score = rating.score
+    else:
+        new_rating = models.Rating(user_id=current_user.id, book_id=rating.book_id, score=rating.score)
+        db.add(new_rating)
+    db.commit()
+    return existing or new_rating

@@ -9,6 +9,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemIcon,
   ListItemText,
   Grid,
   Card,
@@ -25,6 +26,10 @@ import { Link, useNavigate } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SearchIcon from "@mui/icons-material/Search";
+import LogoutIcon from "@mui/icons-material/Logout";
+import HomeIcon from "@mui/icons-material/Home";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import Rating from "@mui/material/Rating";
 import { useCart } from "./CartContext";
 
 const API = "http://localhost:8000";
@@ -58,17 +63,31 @@ const BookList = () => {
       book.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleRatingChange = async (bookId, newValue) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API}/ratings`,
+        { book_id: bookId, score: newValue },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Optionally update book ratings after submission
+      setBooks((prevBooks) =>
+        prevBooks.map((book) =>
+          book.id === bookId ? { ...book, average_rating: newValue } : book
+        )
+      );
+    } catch (err) {
+      console.error("Failed to submit rating:", err);
+      alert("Login required to rate books.");
+    }
+  };
   return (
     <>
       {/* Navbar */}
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            onClick={toggleDrawer}
-          >
+          <IconButton edge="start" color="inherit" onClick={toggleDrawer}>
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -84,22 +103,42 @@ const BookList = () => {
 
       {/* Sidebar Drawer */}
       <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer}>
-        <Box sx={{ width: 250 }} role="presentation" onClick={toggleDrawer}>
+        <Box
+          sx={{ width: 250 }}
+          role="presentation"
+          onClick={toggleDrawer}
+          onKeyDown={toggleDrawer}
+        >
           <List>
             <ListItem button component={Link} to="/books">
+              <ListItemIcon>
+                <HomeIcon />
+              </ListItemIcon>
               <ListItemText primary="Storefront" />
             </ListItem>
             <ListItem button component={Link} to="/cart">
+              <ListItemIcon>
+                <ShoppingCartIcon />
+              </ListItemIcon>
               <ListItemText primary={`View Cart (${cart.length})`} />
             </ListItem>
+            <ListItem button component={Link} to="/orders">
+              <ListItemIcon>
+                <TrackChangesIcon />
+              </ListItemIcon>
+              <ListItemText primary="My Orders" />
+            </ListItem>
             <ListItem button onClick={logout}>
+              <ListItemIcon>
+                <LogoutIcon />
+              </ListItemIcon>
               <ListItemText primary="Logout" />
             </ListItem>
           </List>
         </Box>
       </Drawer>
 
-      {/* Banner with Search */}
+      {/* Banner */}
       <Box
         sx={{
           height: 350,
@@ -136,7 +175,6 @@ const BookList = () => {
           <Typography variant="h6" sx={{ mb: 3 }}>
             Explore. Discover. Add to Cart.
           </Typography>
-
           <Paper
             elevation={4}
             sx={{
@@ -199,7 +237,16 @@ const BookList = () => {
                   <Typography variant="h6" color="primary">
                     ₦{book.price}
                   </Typography>
+                  <Rating
+                    name={`rating-${book.id}`}
+                    value={book.average_rating || 0}
+                    precision={0.5}
+                    onChange={(event, newValue) =>
+                      handleRatingChange(book.id, newValue)
+                    }
+                  />
                 </CardContent>
+
                 <Button
                   variant="contained"
                   color="primary"

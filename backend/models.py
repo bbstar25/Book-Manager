@@ -18,6 +18,9 @@ class Book(Base):
     pdf_data = Column(LargeBinary , nullable=True)  # ✅ Added for PDF file
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    ratings = relationship("Rating", back_populates="book", cascade="all, delete")
+    order_items = relationship("OrderItem", back_populates="book", cascade="all, delete")
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
@@ -32,6 +35,7 @@ class User(Base):
     role = Column(String, default="user")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
+    ratings = relationship("Rating", back_populates="user")
     orders = relationship("Order", back_populates="user", cascade="all, delete")
 
     def __repr__(self):
@@ -60,5 +64,17 @@ class OrderItem(Base):
     title = Column(String)
     price = Column(Float)
     quantity = Column(Integer)
-
+    
+    book = relationship("Book", back_populates="order_items")
     order = relationship("Order", back_populates="items")
+    
+    
+class Rating(Base):
+    __tablename__ = "ratings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=UUID, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"))
+    score = Column(Integer)  # Rating from 1 to 5
+    user = relationship("User", back_populates="ratings")
+    book = relationship("Book", back_populates="ratings")

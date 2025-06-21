@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
@@ -17,7 +17,9 @@ class BookCreate(BookBase):
 
 class Book(BookBase):
     id: UUID
+   
     has_pdf: bool = False  # ✅ Indicates if PDF is uploaded for this book
+    average_rating: float = 0.0
 
     class Config:
         orm_mode = True
@@ -73,3 +75,18 @@ class OrderOut(BaseModel):
 
     class Config:
         orm_mode = True
+        
+        
+        
+class RatingCreate(BaseModel):
+    book_id: UUID
+    score: int = Field(ge=1, le=5)
+
+class RatingOut(BaseModel):
+    id: UUID
+    book_id: UUID
+    user_id: UUID
+    score: int
+
+    class Config:
+        from_attributes = True
