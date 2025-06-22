@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
-
+from datetime import datetime, timedelta, timezone
 import models, schemas, auth, crud
 from database import SessionLocal, engine
 
@@ -210,7 +210,22 @@ def get_order(order_id: str, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    now = datetime.now(timezone.utc)
+    elapsed = now - order.created_at
+
+    # Auto-progress order status
+    if order.status == "placed" and elapsed > timedelta(minutes=1):
+        order.status = "processed"
+    elif order.status == "processed" and elapsed > timedelta(minutes=2):
+        order.status = "shipped"
+    elif order.status == "shipped" and elapsed > timedelta(minutes=3):
+        order.status = "delivered"
+
+    db.commit()
+    db.refresh(order)
     return order
+
 
 @app.post("/ratings", response_model=schemas.RatingOut)
 def create_rating(

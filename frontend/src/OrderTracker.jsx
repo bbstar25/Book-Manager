@@ -33,24 +33,31 @@ const OrderTracker = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Polling effect for live updates every 30 seconds
   useEffect(() => {
     if (!orderId) return;
 
-    axios
-      .get(`${API}/orders/${orderId}`)
-      .then((res) => {
-        const order = res.data;
-        setOrder(order);
+    const fetchOrder = () => {
+      axios
+        .get(`${API}/orders/${orderId}`)
+        .then((res) => {
+          const fetchedOrder = res.data;
+          setOrder(fetchedOrder);
 
-        const stepIndex = steps.findIndex(
-          (s) => s.toLowerCase() === order.status.toLowerCase()
-        );
-        setActiveStep(stepIndex !== -1 ? stepIndex : 0);
-      })
-      .catch((err) => {
-        console.error("Order not found", err);
-        setOrder(null);
-      });
+          const stepIndex = steps.findIndex(
+            (s) => s.toLowerCase() === fetchedOrder.status.toLowerCase()
+          );
+          setActiveStep(stepIndex !== -1 ? stepIndex : 0);
+        })
+        .catch((err) => {
+          console.error("Order not found", err);
+          setOrder(null);
+        });
+    };
+
+    fetchOrder(); // Initial load
+    const interval = setInterval(fetchOrder, 30000); // Poll every 30s
+    return () => clearInterval(interval); // Cleanup on unmount
   }, [orderId]);
 
   const logout = () => {
