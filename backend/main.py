@@ -272,3 +272,16 @@ def create_rating(
         "rating_count": len(scores)
     }
 
+
+@app.delete("/orders/{order_id}")
+def delete_order(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.admin_only)
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    db.delete(order)
+    db.commit()
+    return {"message": "Order deleted"}

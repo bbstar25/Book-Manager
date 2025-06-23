@@ -302,7 +302,11 @@ const BookList = () => {
                     Add to Cart
                   </Button>
                   <Box>
-                    <IconButton size="small" title="More Info">
+                    <IconButton
+                      size="small"
+                      title="More Info"
+                      onClick={() => navigate(`/books/${book.id}/view`)}
+                    >
                       <InfoIcon color="action" />
                     </IconButton>
                     <IconButton size="small" title="Favorite">

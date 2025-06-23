@@ -18,12 +18,14 @@ import {
   Toolbar,
   AppBar,
   CssBaseline,
+  List as MUIList,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const API = "http://localhost:8000";
 
@@ -47,6 +49,21 @@ const Orders = () => {
         setOrders([]);
       });
   }, []);
+
+  const handleDeleteOrder = async (orderId) => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(`${API}/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch (err) {
+      console.error("Delete failed", err);
+      alert("Only admin can delete order");
+    }
+  };
+
+  const user = JSON.parse(localStorage.getItem("user"));
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -75,7 +92,7 @@ const Orders = () => {
       >
         <Toolbar />
         <Box sx={{ overflow: "auto" }}>
-          <List>
+          <MUIList>
             <ListItem button onClick={() => navigate("/books")}>
               <ListItemIcon>
                 <HomeIcon />
@@ -94,7 +111,7 @@ const Orders = () => {
               </ListItemIcon>
               <ListItemText primary="Logout" />
             </ListItem>
-          </List>
+          </MUIList>
         </Box>
       </Drawer>
 
@@ -113,7 +130,14 @@ const Orders = () => {
           orders.map((order) => (
             <Card
               key={order.id}
-              sx={{ mb: 3, borderRadius: 3, boxShadow: 3, p: 2 }}
+              sx={{
+                mb: 4,
+                borderRadius: 4,
+                boxShadow: 5,
+                p: 2,
+                backgroundColor: "#ffffff",
+                borderLeft: "6px solid #1976d2",
+              }}
             >
               <CardContent>
                 <Box
@@ -124,54 +148,84 @@ const Orders = () => {
                     flexWrap: "wrap",
                   }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                    Order #{order.id}
-                  </Typography>
-                  <Chip
-                    label={order.status.toUpperCase()}
-                    color={
-                      order.status === "pending"
-                        ? "warning"
-                        : order.status === "processed"
-                          ? "info"
-                          : order.status === "shipped"
-                            ? "primary"
-                            : "success"
-                    }
-                    sx={{ ml: 2 }}
-                  />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                      📦 Order #{order.id}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      🕒 Placed on:{" "}
+                      {new Date(order.created_at).toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      🧾 Items: {order.items.length}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Chip
+                      label={`Status: ${order.status.toUpperCase()}`}
+                      color={
+                        order.status === "pending"
+                          ? "warning"
+                          : order.status === "processed"
+                            ? "info"
+                            : order.status === "shipped"
+                              ? "primary"
+                              : "success"
+                      }
+                      sx={{ fontWeight: "bold", mb: 1 }}
+                    />
+                    {user?.role === "admin" && (
+                      <IconButton
+                        color="error"
+                        title="Delete Order"
+                        onClick={() => handleDeleteOrder(order.id)}
+                        sx={{ ml: 1 }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
+                  </Box>
                 </Box>
 
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  Placed on: {new Date(order.created_at).toLocaleString()}
-                </Typography>
+                <Divider sx={{ my: 2 }} />
 
-                <List sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                  📚 Ordered Items:
+                </Typography>
+                <List dense>
                   {order.items.map((item, index) => (
-                    <div key={index}>
-                      <ListItem disablePadding>
-                        <ListItemText
-                          primary={item.title}
-                          secondary={`₦${item.price} x ${item.quantity}`}
-                        />
-                      </ListItem>
-                      {index < order.items.length - 1 && <Divider />}
-                    </div>
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={item.title}
+                        secondary={`₦${item.price} x ${item.quantity}`}
+                      />
+                    </ListItem>
                   ))}
                 </List>
 
-                <Button
-                  variant="outlined"
-                  startIcon={<TrackChangesIcon />}
-                  onClick={() => navigate(`/track?id=${order.id}`)}
-                  sx={{ mt: 2 }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mt: 2,
+                  }}
                 >
-                  Track Order
-                </Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<TrackChangesIcon />}
+                    onClick={() => navigate(`/track?id=${order.id}`)}
+                  >
+                    Track Order
+                  </Button>
+                  <Box sx={{ fontSize: "1.4rem", display: "flex", gap: 2 }}>
+                    <span title="Delivery">🚚</span>
+                    <span title="Confirmed">✅</span>
+                    <span title="Payment">💳</span>
+                    <span title="Timeline">📈</span>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
           ))
