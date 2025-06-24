@@ -25,6 +25,7 @@ class Book(Base):
 
     ratings = relationship("Rating", back_populates="book", cascade="all, delete")
     order_items = relationship("OrderItem", back_populates="book", cascade="all, delete")
+    payments = relationship("Payment", back_populates="book", cascade="all, delete")  # ✅ new
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
@@ -42,6 +43,7 @@ class User(Base):
     
     ratings = relationship("Rating", back_populates="user")
     orders = relationship("Order", back_populates="user", cascade="all, delete")
+    payments = relationship("Payment", back_populates="user", cascade="all, delete")  # ✅ new
 
     def __repr__(self):
         return f"<User(username='{self.username}', role='{self.role}')>"
@@ -83,3 +85,15 @@ class Rating(Base):
     score = Column(Integer)  # Rating from 1 to 5
     user = relationship("User", back_populates="ratings")
     book = relationship("Book", back_populates="ratings")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="payments")
+    book = relationship("Book", back_populates="payments")

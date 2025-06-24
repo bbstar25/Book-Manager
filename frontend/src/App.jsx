@@ -5,6 +5,7 @@ import CartPage from "./CartPage";
 import CheckoutPage from "./CheckoutPage";
 import Orders from "./Orders";
 import OrderTracker from "./OrderTracker";
+import PayPage from "./PayPage";
 import { Routes, Route } from "react-router-dom";
 
 const App = () => {
@@ -20,6 +21,7 @@ const App = () => {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/track" element={<OrderTracker />} />
+        <Route path="/pay/:id" element={<PayPage />} />
         <Route path="*" element={<BookList />} />
       </Routes>
     </>

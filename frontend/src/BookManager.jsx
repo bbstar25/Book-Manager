@@ -90,6 +90,7 @@ const BookManager = () => {
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setToken("");
     navigate("/");
   }, [navigate]);
@@ -98,12 +99,14 @@ const BookManager = () => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        const role = decoded?.role;
         const expiry = decoded?.exp;
+        const role = decoded?.role;
 
         if (Date.now() >= expiry * 1000) {
           logout();
-        } else if (role !== "admin") {
+        }
+
+        if (role !== "admin") {
           navigate("/books");
         }
       } catch (err) {
@@ -111,7 +114,7 @@ const BookManager = () => {
         logout();
       }
     }
-  }, [token, navigate, logout]);
+  }, [token, logout, navigate]);
 
   const fetchBooks = useCallback(async () => {
     try {
@@ -137,6 +140,12 @@ const BookManager = () => {
       const accessToken = res.data.access_token;
       localStorage.setItem("token", accessToken);
       setToken(accessToken);
+
+      const userRes = await axios.get(`${API}/users/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      localStorage.setItem("user", JSON.stringify(userRes.data));
+
       setUsername("");
       setPassword("");
     } catch (err) {
@@ -164,8 +173,7 @@ const BookManager = () => {
       setConfirmPassword("");
     } catch (err) {
       alert(
-        "Registration failed: " +
-          (err.response?.data?.detail || "Please try again.")
+        "Registration failed: " + (err.response?.data?.detail || "Try again.")
       );
     }
   };
@@ -387,8 +395,8 @@ const BookManager = () => {
                   />
                 </Button>
                 <Button
-                  variant="contained"
                   fullWidth
+                  variant="contained"
                   sx={{ mt: 2 }}
                   onClick={saveBook}
                 >

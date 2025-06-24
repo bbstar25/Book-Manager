@@ -10,30 +10,28 @@ import {
   Box,
   Tooltip,
 } from "@mui/material";
+import { useNavigate, useParams } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import { useParams } from "react-router-dom";
 
 const API = "http://localhost:8000";
 
 const BookInfo = () => {
   const { id } = useParams();
   const [book, setBook] = useState(null);
-  const [hasAccess, setHasAccess] = useState(false); // 🔒 access state
+  const [hasAccess, setHasAccess] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     // Fetch book info
     axios
-      .get(`${API}/books`)
-      .then((res) => {
-        const found = res.data.find((b) => b.id.toString() === id);
-        setBook(found);
-      })
+      .get(`${API}/books/${id}`)
+      .then((res) => setBook(res.data))
       .catch((err) => console.error("Failed to fetch book info", err));
 
-    // Check access (simulate: user has paid for this book)
+    // Check if user has access (i.e. paid for this book)
     axios
       .get(`${API}/books/${id}/access`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -94,9 +92,33 @@ const BookInfo = () => {
                 <Button
                   variant="contained"
                   color={hasAccess ? "secondary" : "inherit"}
-                  href={hasAccess ? `${API}/books/${book.id}/pdf` : undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={async () => {
+                    if (!hasAccess) return;
+
+                    const token = localStorage.getItem("token");
+                    try {
+                      const response = await axios.get(
+                        `${API}/books/${book.id}/pdf`,
+                        {
+                          headers: { Authorization: `Bearer ${token}` },
+                          responseType: "blob",
+                        }
+                      );
+
+                      const url = window.URL.createObjectURL(
+                        new Blob([response.data])
+                      );
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.setAttribute("download", `${book.title}.pdf`);
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                    } catch (err) {
+                      console.error("PDF download failed", err);
+                      alert("Unauthorized or failed to download PDF");
+                    }
+                  }}
                   disabled={!hasAccess}
                   startIcon={hasAccess ? <LockOpenIcon /> : <LockIcon />}
                 >
@@ -105,6 +127,15 @@ const BookInfo = () => {
               </span>
             </Tooltip>
           )}
+
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate(`/pay/${book.id}`)}
+            sx={{ mt: 2 }}
+          >
+            Buy Now
+          </Button>
         </CardContent>
       </Card>
     </Container>

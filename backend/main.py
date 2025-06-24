@@ -59,9 +59,25 @@ def read_books(db: Session = Depends(get_db)):
             price=book.price,
             description=book.description,
             has_pdf=bool(book.pdf_data)
-        )
-        for book in books
+        ) for book in books
     ]
+
+
+@app.get("/books/{book_id}", response_model=schemas.Book)
+def get_single_book(book_id: UUID, db: Session = Depends(get_db)):
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return schemas.Book(
+        id=book.id,
+        title=book.title,
+        author=book.author,
+        price=book.price,
+        description=book.description,
+        has_pdf=bool(book.pdf_data)
+    )
+
+
 
 # Create book with image and optional PDF
 @app.post("/books", response_model=schemas.Book)
@@ -76,17 +92,7 @@ def create_book(
     current_user: models.User = Depends(auth.admin_only),
 ):
     image_data = image.file.read()
-    
-    # Validate and read PDF
-    pdf_data = None
-    if pdf:
-        if not pdf.content_type.startswith("application/pdf"):
-            raise HTTPException(status_code=400, detail="Invalid file type for PDF")
-        pdf_data = pdf.file.read()
-        print(f"Received PDF: {pdf.filename}, size: {len(pdf_data)} bytes")
-    else:
-        print("No PDF uploaded")
-
+    pdf_data = pdf.file.read() if pdf else None
     db_book = models.Book(
         title=title,
         author=author,
@@ -108,21 +114,22 @@ def get_book_image(book_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image not found")
     return Response(content=db_book.image_data, media_type="image/jpeg")
 
-# Get book PDF
+# Get book PDF (with payment check)
 @app.get("/books/{book_id}/pdf")
-def get_book_pdf(book_id: str, db: Session = Depends(get_db)):
+def get_book_pdf(book_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not db_book or not db_book.pdf_data:
         raise HTTPException(status_code=404, detail="PDF not found")
+
+    payment = db.query(models.Payment).filter_by(user_id=current_user.id, book_id=book_id).first()
+    if not payment:
+        raise HTTPException(status_code=403, detail="Payment required to access PDF")
+
     return Response(content=db_book.pdf_data, media_type="application/pdf")
 
-# Delete a book
+# Delete book
 @app.delete("/books/{book_id}")
-def delete_book(
-    book_id: str,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.admin_only),
-):
+def delete_book(book_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.admin_only)):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -130,14 +137,9 @@ def delete_book(
     db.commit()
     return {"message": "Book deleted"}
 
-# Update book info (not file)
+# Update book
 @app.put("/books/{book_id}", response_model=schemas.Book)
-def update_book(
-    book_id: str,
-    book: schemas.BookCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.admin_only),
-):
+def update_book(book_id: str, book: schemas.BookCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.admin_only)):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -154,13 +156,9 @@ def update_book(
 def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-# Promote user to admin
+# Promote user
 @app.put("/users/{username}/make-admin")
-def make_admin(
-    username: str,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
-):
+def make_admin(username: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can promote users")
     user = db.query(models.User).filter(models.User.username == username).first()
@@ -170,118 +168,88 @@ def make_admin(
     db.commit()
     return {"message": f"{username} is now an admin."}
 
-
+# Create order
 @app.post("/orders", response_model=schemas.OrderOut)
-def create_order(
-    order: schemas.OrderCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
-):
+def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     new_order = models.Order(user_id=current_user.id)
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
-
     for item in order.items:
-        order_item = models.OrderItem(
-            order_id=new_order.id,
-            book_id=item.book_id,
-            title=item.title,
-            price=item.price,
-            quantity=item.quantity
-        )
-        db.add(order_item)
-
+        db.add(models.OrderItem(order_id=new_order.id, book_id=item.book_id, title=item.title, price=item.price, quantity=item.quantity))
     db.commit()
-    db.refresh(new_order)
     return new_order
 
-
+# Get my orders
 @app.get("/orders", response_model=List[schemas.OrderOut])
-def get_my_orders(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
-):
-    orders = db.query(models.Order).filter(models.Order.user_id == current_user.id).all()
-    return orders
+def get_my_orders(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.Order).filter(models.Order.user_id == current_user.id).all()
 
+# Get single order
 @app.get("/orders/{order_id}", response_model=schemas.OrderOut)
 def get_order(order_id: str, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-
     now = datetime.now(timezone.utc)
     elapsed = now - order.created_at
-
-    # Auto-progress order status
     if order.status == "placed" and elapsed > timedelta(minutes=1):
         order.status = "processed"
     elif order.status == "processed" and elapsed > timedelta(minutes=2):
         order.status = "shipped"
     elif order.status == "shipped" and elapsed > timedelta(minutes=3):
         order.status = "delivered"
-
     db.commit()
-    db.refresh(order)
     return order
 
-
+# Submit rating
 @app.post("/ratings", response_model=schemas.RatingOut)
-def create_rating(
-    rating: schemas.RatingCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
+def create_rating(rating: schemas.RatingCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     book = db.query(models.Book).filter_by(id=rating.book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-
-    existing = db.query(models.Rating).filter_by(
-        user_id=current_user.id, book_id=rating.book_id
-    ).first()
-
+    existing = db.query(models.Rating).filter_by(user_id=current_user.id, book_id=rating.book_id).first()
     if existing:
         existing.score = rating.score
     else:
-        existing = models.Rating(
-            user_id=current_user.id,
-            book_id=rating.book_id,
-            score=rating.score
-        )
+        existing = models.Rating(user_id=current_user.id, book_id=rating.book_id, score=rating.score)
         db.add(existing)
-
     db.commit()
-    db.refresh(existing)
-
-    # ✅ Recalculate average and count
     ratings = db.query(models.Rating).filter_by(book_id=rating.book_id).all()
-    scores = [r.score for r in ratings]
-    average = sum(scores) / len(scores)
-
+    average = sum(r.score for r in ratings) / len(ratings)
     book.average_rating = average
-    book.rating_count = len(scores)
+    book.rating_count = len(ratings)
     db.commit()
+    return {"id": existing.id, "book_id": existing.book_id, "user_id": existing.user_id, "score": existing.score, "average_rating": average, "rating_count": len(ratings)}
 
-    return {
-        "id": existing.id,
-        "book_id": existing.book_id,
-        "user_id": existing.user_id,
-        "score": existing.score,
-        "average_rating": average,
-        "rating_count": len(scores)
-    }
-
-
+# Delete order
 @app.delete("/orders/{order_id}")
-def delete_order(
-    order_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.admin_only)
-):
+def delete_order(order_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(auth.admin_only)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     db.delete(order)
     db.commit()
     return {"message": "Order deleted"}
+
+# Payment endpoint
+@app.post("/pay/{book_id}")
+def pay_for_book(book_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    book = db.query(models.Book).filter_by(id=book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    existing = db.query(models.Payment).filter_by(user_id=current_user.id, book_id=book_id).first()
+    if existing:
+        return {"message": "Already paid for this book."}
+    payment = models.Payment(user_id=current_user.id, book_id=book_id)
+    db.add(payment)
+    db.commit()
+    return {"message": "Payment successful. You can now access the PDF."}
+
+
+
+# Check if user has access (payment made) to book PDF
+@app.get("/books/{book_id}/access")
+def check_book_access(book_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    payment = db.query(models.Payment).filter_by(user_id=current_user.id, book_id=book_id).first()
+    return {"has_access": bool(payment)}
