@@ -1,5 +1,5 @@
-// CartPage.jsx
-import React from "react";
+// EnhancedCartPage.jsx
+import React, { useState } from "react";
 import { useCart } from "./CartContext";
 import {
   AppBar,
@@ -17,6 +17,16 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Grid,
 } from "@mui/material";
 import {
   Add,
@@ -25,21 +35,57 @@ import {
   Home,
   ShoppingCart,
   MenuBook,
+  Info,
+  Favorite,
+  Print,
+  Discount,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 const API = "http://localhost:8000";
 const drawerWidth = 200;
 
-const CartPage = () => {
+const EnhancedCartPage = () => {
   const { cart, removeFromCart, increaseQuantity, decreaseQuantity } =
     useCart();
   const navigate = useNavigate();
+  const [coupon, setCoupon] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [selectedBook, setSelectedBook] = useState(null);
 
-  const totalPrice = cart.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const tax = subtotal * 0.075;
+  const total = subtotal + tax - discount;
+
+  const estimatedDelivery = new Date();
+  estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
+
+  const applyCoupon = () => {
+    if (coupon.toLowerCase() === "save10") {
+      setDiscount(subtotal * 0.1);
+      setSnackbar({
+        open: true,
+        message: "Coupon applied!",
+        severity: "success",
+      });
+    } else {
+      setSnackbar({
+        open: true,
+        message: "Invalid coupon code",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -59,21 +105,18 @@ const CartPage = () => {
         <Toolbar />
         <List>
           <ListItem button onClick={() => navigate("/")}>
-            {" "}
             <ListItemIcon>
               <Home />
             </ListItemIcon>
             <ListItemText primary="Home" />
           </ListItem>
           <ListItem button onClick={() => navigate("/books")}>
-            {" "}
             <ListItemIcon>
               <MenuBook />
             </ListItemIcon>
             <ListItemText primary="Books" />
           </ListItem>
           <ListItem button onClick={() => navigate("/cart")}>
-            {" "}
             <ListItemIcon>
               <ShoppingCart />
             </ListItemIcon>
@@ -82,23 +125,34 @@ const CartPage = () => {
         </List>
       </Drawer>
 
-      {/* Main content */}
       <Box sx={{ flexGrow: 1 }}>
-        {/* Top Navbar */}
         <AppBar
           position="fixed"
           sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
         >
           <Toolbar>
-            <Typography variant="h6" noWrap component="div">
-              Shopping Cart
-            </Typography>
+            <Typography variant="h6">Enhanced Shopping Cart</Typography>
           </Toolbar>
         </AppBar>
-        <Toolbar /> {/* spacer */}
+        <Toolbar />
+
         <Container sx={{ mt: 4, mb: 4 }}>
+          <TextField
+            label="Coupon Code"
+            value={coupon}
+            onChange={(e) => setCoupon(e.target.value)}
+            sx={{ mb: 2, mr: 2 }}
+          />
+          <Button
+            variant="outlined"
+            onClick={applyCoupon}
+            startIcon={<Discount />}
+          >
+            Apply
+          </Button>
+
           {cart.length === 0 ? (
-            <Typography variant="h6" sx={{ mt: 4 }}>
+            <Typography variant="h6" align="center" sx={{ mt: 4 }}>
               Your cart is empty.
             </Typography>
           ) : (
@@ -132,23 +186,14 @@ const CartPage = () => {
                         mr: 2,
                       }}
                     />
-
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="h6">{item.title}</Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom
-                      >
+                      <Typography variant="body2" color="text.secondary">
                         {item.author}
                       </Typography>
 
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <Typography variant="body1" sx={{ mr: 1 }}>
-                          Quantity:
-                        </Typography>
+                      <Box display="flex" alignItems="center" mb={1}>
+                        <Typography sx={{ mr: 1 }}>Qty:</Typography>
                         <IconButton onClick={() => decreaseQuantity(item.id)}>
                           <Remove />
                         </IconButton>
@@ -158,20 +203,36 @@ const CartPage = () => {
                         </IconButton>
                       </Box>
 
-                      <Typography variant="h6" color="primary">
+                      <Typography variant="body1" color="primary">
                         ₦{(item.price * item.quantity).toLocaleString()}
                       </Typography>
 
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => removeFromCart(item.id)}
-                        startIcon={<Delete />}
-                        sx={{ mt: 1 }}
-                      >
-                        Remove
-                      </Button>
+                      <Box mt={1}>
+                        <Button
+                          onClick={() => removeFromCart(item.id)}
+                          startIcon={<Delete />}
+                          color="error"
+                          variant="outlined"
+                          size="small"
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          onClick={() => setSelectedBook(item)}
+                          startIcon={<Info />}
+                          size="small"
+                          sx={{ ml: 1 }}
+                        >
+                          Details
+                        </Button>
+                        <Button
+                          startIcon={<Favorite />}
+                          size="small"
+                          sx={{ ml: 1 }}
+                        >
+                          Save
+                        </Button>
+                      </Box>
                     </Box>
                   </Card>
                 ))}
@@ -179,34 +240,57 @@ const CartPage = () => {
 
               <Divider sx={{ my: 4 }} />
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  maxWidth: 600,
-                  mx: "auto",
-                }}
-              >
-                <Typography variant="h5">
-                  Total: ₦{totalPrice.toLocaleString()}
+              <Box maxWidth={600} mx="auto">
+                <Typography>Subtotal: ₦{subtotal.toLocaleString()}</Typography>
+                <Typography>Tax (7.5%): ₦{tax.toLocaleString()}</Typography>
+                <Typography>Discount: ₦{discount.toLocaleString()}</Typography>
+                <Typography variant="h6">
+                  Total: ₦{total.toLocaleString()}
+                </Typography>
+                <Typography color="text.secondary">
+                  Estimated Delivery: {estimatedDelivery.toDateString()}
                 </Typography>
 
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => navigate("/checkout")}
-                  sx={{ px: 4, py: 1 }}
-                >
-                  Proceed to Checkout
-                </Button>
+                <Box display="flex" justifyContent="space-between" mt={2}>
+                  <Button onClick={() => window.print()} startIcon={<Print />}>
+                    Print Cart
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate("/checkout")}
+                  >
+                    Checkout
+                  </Button>
+                </Box>
               </Box>
             </>
           )}
         </Container>
+
+        {/* Book Detail Modal */}
+        <Dialog open={!!selectedBook} onClose={() => setSelectedBook(null)}>
+          <DialogTitle>{selectedBook?.title}</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {selectedBook?.description || "No description available."}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSelectedBook(null)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+        >
+          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+        </Snackbar>
       </Box>
     </Box>
   );
 };
 
-export default CartPage;
+export default EnhancedCartPage;

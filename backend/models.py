@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from database import Base
 from sqlalchemy import Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship 
 
 class Book(Base):
     __tablename__ = "books"
@@ -26,6 +26,8 @@ class Book(Base):
     ratings = relationship("Rating", back_populates="book", cascade="all, delete")
     order_items = relationship("OrderItem", back_populates="book", cascade="all, delete")
     payments = relationship("Payment", back_populates="book", cascade="all, delete")  # ✅ new
+    
+    cart_items = relationship("CartItem", back_populates="book")
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
@@ -44,6 +46,8 @@ class User(Base):
     ratings = relationship("Rating", back_populates="user")
     orders = relationship("Order", back_populates="user", cascade="all, delete")
     payments = relationship("Payment", back_populates="user", cascade="all, delete")  # ✅ new
+    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete")
+
 
     def __repr__(self):
         return f"<User(username='{self.username}', role='{self.role}')>"
@@ -97,3 +101,15 @@ class Payment(Base):
 
     user = relationship("User", back_populates="payments")
     book = relationship("Book", back_populates="payments")
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"))
+    quantity = Column(Integer, default=1)
+
+    user = relationship("User", back_populates="cart_items")
+    book = relationship("Book",  back_populates="cart_items")

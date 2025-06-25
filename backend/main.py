@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, File, Form, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
@@ -253,3 +253,51 @@ def pay_for_book(book_id: UUID, db: Session = Depends(get_db), current_user: mod
 def check_book_access(book_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     payment = db.query(models.Payment).filter_by(user_id=current_user.id, book_id=book_id).first()
     return {"has_access": bool(payment)}
+
+
+
+
+@app.get("/cart")
+def get_cart(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    items = (
+        db.query(models.CartItem)
+        .options(joinedload(models.CartItem.book))  # Eager load the book relation
+        .filter_by(user_id=current_user.id)
+        .all()
+    )
+
+    return [
+        {
+            "id": i.book_id,
+            "title": i.book.title,
+            "price": i.book.price,
+            "quantity": i.quantity
+        }
+        for i in items
+    ]
+
+@app.post("/cart/add")
+def add_to_cart(item: schemas.CartItemCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    cart_item = db.query(models.CartItem).filter_by(user_id=current_user.id, book_id=item.book_id).first()
+    if cart_item:
+        cart_item.quantity += item.quantity
+        if cart_item.quantity <= 0:
+            db.delete(cart_item)
+        else:
+            db.add(cart_item)
+    else:
+        new_item = models.CartItem(user_id=current_user.id, **item.dict())
+        db.add(new_item)
+    db.commit()
+    return {"message": "Cart updated"}
+
+@app.delete("/cart/remove/{book_id}")
+def remove_from_cart(book_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    item = db.query(models.CartItem).filter_by(user_id=current_user.id, book_id=book_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+    return {"message": "Item removed"}

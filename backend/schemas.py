@@ -91,3 +91,18 @@ class RatingOut(BaseModel):
     rating_count: int
     class Config:
         from_attributes = True
+
+
+class CartItemCreate(BaseModel):
+    book_id: UUID
+    quantity: int = 1
+
+class CartItemOut(BaseModel):
+    id: int
+    book_id: UUID
+    quantity: int
+    title: str
+    price: float
+
+    class Config:
+        orm_mode = True

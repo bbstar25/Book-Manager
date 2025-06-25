@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 import models, schemas
 from auth import get_password_hash
-import uuid
+from uuid import UUID
 
 # ------------------------
 # USER LOGIC
@@ -84,3 +84,44 @@ def get_user_orders(db: Session, user_id: str):
 
 def get_order_by_id(db: Session, order_id: str):
     return db.query(models.Order).filter(models.Order.id == order_id).first()
+
+
+
+
+
+def add_to_cart(db: Session, user_id: UUID, item: schemas.CartItemCreate):
+    existing = db.query(models.CartItem).filter_by(user_id=user_id, book_id=item.book_id).first()
+    if existing:
+        existing.quantity += item.quantity
+    else:
+        cart_item = models.CartItem(user_id=user_id, book_id=item.book_id, quantity=item.quantity)
+        db.add(cart_item)
+    db.commit()
+
+
+def get_cart_items(db: Session, user_id: UUID):
+    items = db.query(models.CartItem).filter_by(user_id=user_id).all()
+    result = []
+    for item in items:
+        result.append(schemas.CartItemOut(
+            id=item.id,
+            book_id=item.book_id,
+            quantity=item.quantity,
+            title=item.book.title,
+            price=item.book.price,
+        ))
+    return result
+
+
+def remove_cart_item(db: Session, user_id: UUID, book_id: UUID):
+    item = db.query(models.CartItem).filter_by(user_id=user_id, book_id=book_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+
+
+def clear_cart(db: Session, user_id: UUID):
+    db.query(models.CartItem).filter_by(user_id=user_id).delete()
+    db.commit()
+
+
