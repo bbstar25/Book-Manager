@@ -1,5 +1,5 @@
 // CartProvider.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { CartContext } from "./CartContext";
 import axios from "axios";
 
@@ -9,22 +9,24 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const token = localStorage.getItem("token");
 
-  useEffect(() => {
-    const fetchCartFromBackend = async () => {
-      try {
-        const res = await axios.get(`${API}/cart`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCart(res.data);
-      } catch (error) {
-        console.error("Error loading cart:", error);
-      }
-    };
+  // ✅ Memoized function to fetch cart (for useEffect + context)
+  const fetchCartFromBackend = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCart(res.data);
+    } catch (error) {
+      console.error("Error loading cart:", error);
+    }
+  }, [token]);
 
+  // ✅ Fetch cart on first mount or when token changes
+  useEffect(() => {
     if (token) {
       fetchCartFromBackend();
     }
-  }, [token]);
+  }, [token, fetchCartFromBackend]);
 
   const syncAdd = async (book, quantity) => {
     try {
@@ -109,9 +111,11 @@ export const CartProvider = ({ children }) => {
       value={{
         cart,
         addToCart,
+        setCart,
         removeFromCart,
         increaseQuantity,
         decreaseQuantity,
+        refreshCart: fetchCartFromBackend, // ✅ exposed in context
       }}
     >
       {children}
