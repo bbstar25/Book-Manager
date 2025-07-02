@@ -22,7 +22,6 @@ import {
   Paper,
   InputAdornment,
   Rating,
-  CircularProgress,
   Skeleton,
   Pagination,
   GlobalStyles,
@@ -42,6 +41,22 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "./CartContext";
 import imageleft from "./assets/bookshelve.jpg";
+
+// ✅ Live Chat Component
+const LiveChat = () => {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://embed.tawk.to/6864ef41584668190c259d36/1iv54d64t";
+    script.charset = "UTF-8";
+    script.setAttribute("crossorigin", "*");
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+  return null;
+};
 
 const API = "http://localhost:8000";
 
@@ -64,7 +79,6 @@ const BookList = () => {
         const res = await axios.get(`${API}/books`);
         setBooks(res.data);
         setLoading(false);
-
         const cats = [...new Set(res.data.map((b) => b.category || "Other"))];
         setCategories(["All", ...cats]);
       } catch (err) {
@@ -115,6 +129,8 @@ const BookList = () => {
 
   return (
     <>
+      <LiveChat />
+
       <GlobalStyles
         styles={{
           "@keyframes marquee": {
